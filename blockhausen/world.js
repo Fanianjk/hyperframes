@@ -49,6 +49,8 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(1);
 renderer.setSize(W, H, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(58, W / H, 0.1, 900);
@@ -56,8 +58,20 @@ const camera = new THREE.PerspectiveCamera(58, W / H, 0.1, 900);
 const hemi = new THREE.HemisphereLight(0xdfefff, 0x6b8a4a, 1.6);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
-sun.position.set(30, 60, 25);
-scene.add(sun);
+sun.position.set(45, 80, 60);
+sun.target.position.set(0, 0, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -95;
+sun.shadow.camera.right = 95;
+sun.shadow.camera.top = 95;
+sun.shadow.camera.bottom = -95;
+sun.shadow.camera.near = 10;
+sun.shadow.camera.far = 260;
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.04;
+scene.add(sun, sun.target);
+scene.fog = new THREE.Fog(0xbfe6ff, 120, 520);
 const redLight = new THREE.PointLight(0xff2030, 0, 40, 1.5);
 scene.add(redLight);
 
@@ -453,8 +467,9 @@ const faceTo = (c, x, z) => {
 // ---------- world ----------
 const world = new THREE.Group();
 scene.add(world);
-const grass = new THREE.Mesh(new THREE.PlaneGeometry(560, 560), lam("#5fbf4a"));
+const grass = new THREE.Mesh(new THREE.PlaneGeometry(560, 412), lam("#62c64e"));
 grass.rotation.x = -Math.PI / 2;
+grass.position.z = -74;
 world.add(grass);
 const roadTex = canvasTex(64, 512, (g) => {
   g.fillStyle = "#4a4d55";
@@ -472,19 +487,63 @@ allMats.push(road.material);
 road.rotation.x = -Math.PI / 2;
 road.position.set(0, 0.02, 60);
 world.add(road);
-const stoneTex = canvasTex(256, 256, (g) => {
-  g.fillStyle = "#b9b4c8";
+const walkMat = lam("#e9e6ee");
+for (const sx of [-5.6, 5.6]) {
+  const walk = box(2.2, 0.12, 150, walkMat);
+  walk.position.set(sx, 0.06, 60);
+  world.add(walk);
+}
+const sand = new THREE.Mesh(new THREE.PlaneGeometry(560, 40), lam("#f3e2b3"));
+sand.rotation.x = -Math.PI / 2;
+sand.position.set(0, 0.035, 152);
+world.add(sand);
+const waterTex = canvasTex(256, 256, (g) => {
+  g.fillStyle = "#2fb8f0";
   g.fillRect(0, 0, 256, 256);
+  const r = mulberry32(21);
+  for (let i = 0; i < 120; i++) {
+    g.fillStyle = r() > 0.5 ? "rgba(255,255,255,.35)" : "rgba(20,120,200,.35)";
+    g.fillRect(r() * 256, r() * 256, 10 + r() * 22, 3);
+  }
+});
+waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
+waterTex.repeat.set(30, 8);
+const water = new THREE.Mesh(
+  new THREE.PlaneGeometry(700, 220),
+  new THREE.MeshLambertMaterial({ map: waterTex }),
+);
+allMats.push(water.material);
+water.rotation.x = -Math.PI / 2;
+water.position.set(0, -0.3, 282);
+world.add(water);
+const pierMat = lam("#a8743f");
+const pier = box(3, 0.4, 46, pierMat);
+pier.position.set(0, 0.25, 172);
+world.add(pier);
+const stoneTex = canvasTex(512, 512, (g) => {
+  // rounded cobblestones with dark grout and a soft top-left highlight
+  g.fillStyle = "#6f6b80";
+  g.fillRect(0, 0, 512, 512);
   const r = mulberry32(3);
-  for (let y = 0; y < 256; y += 32)
-    for (let x = 0; x < 256; x += 32) {
-      const k = 170 + Math.floor(r() * 40);
-      g.fillStyle = `rgb(${k},${k - 6},${k + 14})`;
-      g.fillRect(x + 2, y + 2, 28, 28);
+  for (let row = 0; row < 16; row++)
+    for (let col = 0; col < 16; col++) {
+      const cx = col * 32 + 16 + (row % 2 ? 8 : 0) + (r() - 0.5) * 6;
+      const cy = row * 32 + 16 + (r() - 0.5) * 6;
+      const k = 175 + Math.floor(r() * 45);
+      const rx = 12 + r() * 3;
+      const ry = 11 + r() * 3;
+      g.fillStyle = `rgb(${k - 10},${k - 14},${k + 6})`;
+      g.beginPath();
+      g.ellipse(cx, cy, rx, ry, r() * 3, 0, 7);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.22)";
+      g.beginPath();
+      g.ellipse(cx - 3, cy - 3, rx * 0.55, ry * 0.45, 0, 0, 7);
+      g.fill();
     }
 });
 stoneTex.wrapS = stoneTex.wrapT = THREE.RepeatWrapping;
-stoneTex.repeat.set(8, 8);
+stoneTex.repeat.set(14, 14);
 const plaza = new THREE.Mesh(
   new THREE.PlaneGeometry(44, 44),
   new THREE.MeshLambertMaterial({ map: stoneTex }),
@@ -519,7 +578,14 @@ function building(x, z, w, h, d, seed) {
   b.position.y = h / 2;
   const roof = box(w + 0.6, 0.7, d + 0.6, lam(seed % 2 ? "#c9543d" : "#8a5a44"));
   roof.position.y = h + 0.35;
-  grp.add(b, roof);
+  const base = box(w + 0.3, 1.2, d + 0.3, lam("#d8d2c4"));
+  base.position.y = 0.6;
+  grp.add(b, roof, base);
+  if (seed % 3 === 0) {
+    const chimney = box(1, 2, 1, lam("#9a4a3a"));
+    chimney.position.set(w * 0.25, h + 1.6, -d * 0.2);
+    grp.add(chimney);
+  }
   grp.position.set(x, 0, z);
   world.add(grp);
   buildings.push(grp);
@@ -581,15 +647,105 @@ for (let i = 0; i < 26; i++) {
   world.add(t);
 }
 // distant mountains
-for (let i = 0; i < 9; i++) {
-  const m = new THREE.Mesh(
-    new THREE.ConeGeometry(40 + hash(i) * 20, 60 + hash(i + 9) * 40, 5),
-    lam(i % 2 ? "#8fb7a6" : "#7aa596"),
-  );
-  const a = -Math.PI * 0.1 + (i * (Math.PI * 1.2)) / 8;
-  m.position.set(Math.cos(a) * 260, 20, -Math.sin(a) * 260 + 20);
-  world.add(m);
+const rockMat = lam("#6d7486", { flatShading: true });
+const snowMat = lam("#ffffff", { flatShading: true });
+for (let i = 0; i < 16; i++) {
+  const r = 34 + hash(i) * 22;
+  const hgt = 70 + hash(i + 9) * 45;
+  const mg = new THREE.Group();
+  const geo = new THREE.ConeGeometry(r, hgt, 9, 4);
+  const pos = geo.attributes.position;
+  for (let k = 0; k < pos.count; k++) {
+    const y = pos.getY(k);
+    if (y < hgt / 2 - 0.1) {
+      const j = hash(i * 131 + k);
+      pos.setX(k, pos.getX(k) * (0.85 + j * 0.3));
+      pos.setZ(k, pos.getZ(k) * (0.85 + hash(k + i) * 0.3));
+    }
+  }
+  geo.computeVertexNormals();
+  const rock = new THREE.Mesh(geo, rockMat);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, hgt * 0.42, 9, 1), snowMat);
+  cap.position.y = hgt * 0.29 + 0.5;
+  mg.add(rock, cap);
+  const a = -Math.PI * 0.15 + (i * (Math.PI * 1.3)) / 15;
+  const dist = 250 + hash(i + 40) * 40;
+  mg.position.set(Math.cos(a) * dist, hgt / 2 - 6, -Math.sin(a) * dist + 10);
+  world.add(mg);
 }
+// pine forest ring (instanced)
+const pineSpots = [];
+{
+  const r = mulberry32(77);
+  while (pineSpots.length < 520) {
+    const x = (r() - 0.5) * 320;
+    const z = -150 + r() * 280;
+    const inTown = Math.abs(x) < 26 && z > -62 && z < 128;
+    const nearLot = Math.abs(x + 31) < 10 && Math.abs(z - 36) < 10;
+    if (inTown || nearLot || z > 128) continue;
+    pineSpots.push([x, z, 0.8 + r() * 0.7]);
+  }
+}
+const pineDummy = new THREE.Object3D();
+const pineTiers = [
+  [new THREE.ConeGeometry(2.6, 3.6, 7), lam("#1f9a63"), 2.8],
+  [new THREE.ConeGeometry(2.0, 3.0, 7), lam("#26ad70"), 4.6],
+  [new THREE.ConeGeometry(1.3, 2.6, 7), lam("#2ec27c"), 6.2],
+];
+const trunkGeo = new THREE.BoxGeometry(0.6, 2, 0.6);
+const trunkInst = new THREE.InstancedMesh(trunkGeo, lam("#7a4b2a"), pineSpots.length);
+const tierInst = pineTiers.map(([g, m]) => new THREE.InstancedMesh(g, m, pineSpots.length));
+pineSpots.forEach(([x, z, sc], i) => {
+  pineDummy.position.set(x, 1 * sc, z);
+  pineDummy.scale.setScalar(sc);
+  pineDummy.updateMatrix();
+  trunkInst.setMatrixAt(i, pineDummy.matrix);
+  pineTiers.forEach(([, , y], k) => {
+    pineDummy.position.set(x, y * sc, z);
+    pineDummy.updateMatrix();
+    tierInst[k].setMatrixAt(i, pineDummy.matrix);
+  });
+});
+world.add(trunkInst, ...tierInst);
+// puffy clouds
+const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x9fb6c8, fog: false });
+const clouds = new THREE.Group();
+for (let i = 0; i < 14; i++) {
+  const c = new THREE.Group();
+  const n = 4 + Math.floor(hash(i + 500) * 4);
+  for (let k = 0; k < n; k++) {
+    const sph = new THREE.Mesh(new THREE.IcosahedronGeometry(6 + hash(i * 7 + k) * 6, 1), cloudMat);
+    sph.position.set(k * 7 - n * 3.5, hash(i + k * 3) * 4, hash(i * 3 + k) * 6 - 3);
+    sph.scale.y = 0.65;
+    c.add(sph);
+  }
+  const a = -Math.PI * 0.2 + i * 0.27;
+  const dist = 200 + hash(i + 600) * 120;
+  c.position.set(Math.cos(a) * dist, 85 + hash(i + 700) * 40, -Math.sin(a) * dist + 20);
+  c.lookAt(0, c.position.y, 0);
+  clouds.add(c);
+}
+world.add(clouds);
+// gradient sky dome
+const skyUniforms = {
+  top: { value: new THREE.Color("#2f9be8") },
+  bottom: { value: new THREE.Color("#c8ecff") },
+};
+const skyDome = new THREE.Mesh(
+  new THREE.SphereGeometry(600, 32, 16),
+  new THREE.ShaderMaterial({
+    uniforms: skyUniforms,
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    vertexShader:
+      "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+    fragmentShader:
+      "uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float k = clamp(vP.y * 1.6 + 0.05, 0.0, 1.0); gl_FragColor = vec4(mix(bottom, top, pow(k, 0.8)), 1.0); }",
+  }),
+);
+skyDome.renderOrder = -1;
+scene.add(skyDome);
 
 // bench for Timo
 const bench = new THREE.Group();
@@ -710,6 +866,22 @@ world.add(stage);
 const bulbs = [];
 const bulbCols = [0xff3d6e, 0xffd23d, 0x3dd8ff, 0x7dff5a, 0xc86bff];
 const bulbGeo = new THREE.SphereGeometry(0.22, 8, 6);
+const glowTex = canvasTex(64, 64, (g) => {
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, "rgba(255,255,255,1)");
+  gr.addColorStop(0.25, "rgba(255,255,255,.55)");
+  gr.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+});
+const glows = [];
+// coloured party lights that actually light the plaza at night
+const partyLights = [0xff3d8a, 0x3dd8ff, 0xffd23d, 0x7dff5a].map((c, i) => {
+  const L = new THREE.PointLight(c, 0, 26, 1.4);
+  L.position.set(i % 2 ? 9 : -9, 6.5, i < 2 ? -16 : -32);
+  scene.add(L);
+  return L;
+});
 function stringLine(a, b, n, sag) {
   for (let i = 0; i <= n; i++) {
     const k = i / n;
@@ -722,6 +894,20 @@ function stringLine(a, b, n, sag) {
     m.position.copy(p);
     world.add(m);
     bulbs.push(m);
+    const gl = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: glowTex,
+        color: bulbCols[i % bulbCols.length],
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        fog: false,
+      }),
+    );
+    gl.position.copy(p);
+    gl.scale.setScalar(2.2);
+    world.add(gl);
+    glows.push(gl);
   }
 }
 const poles = [v3(-14, 9, -12), v3(14, 9, -12), v3(-14, 9, -36), v3(14, 9, -36)];
@@ -1294,6 +1480,19 @@ function renderAt(t) {
     sun.intensity = 2.2;
   }
   scene.background = tmpC;
+  // gradient sky + haze follow the mood
+  skyDome.visible = !inRoom;
+  skyUniforms.top.value.copy(tmpC).multiplyScalar(night ? 0.7 : 0.78);
+  skyUniforms.bottom.value
+    .copy(tmpC)
+    .lerp(night ? tmpC : new THREE.Color("#ffffff"), night ? 0 : 0.55);
+  if (!night && !dusk) skyUniforms.top.value.set("#2f9be8");
+  scene.fog.color.copy(skyUniforms.bottom.value);
+  scene.fog.near = night ? 60 : 120;
+  scene.fog.far = night ? 380 : 520;
+  clouds.visible = !night && !inRoom;
+  cloudMat.emissive.set(dusk ? "#6a5a9a" : "#9fb6c8");
+  water.material.map.offset.x = t * 0.01;
   stars.visible = night || dusk;
   moon.visible = dusk || night;
   moon.position.copy(night ? v3(-40, 60, -110) : MOON);
@@ -1302,7 +1501,13 @@ function renderAt(t) {
     b.visible = night;
     const on = 0.6 + 0.4 * Math.sin(t * 3 + i * 1.7);
     b.scale.setScalar(on);
+    glows[i].visible = night && !flick;
+    glows[i].scale.setScalar(1.6 + on * 1.4);
+    glows[i].material.opacity = 0.55 + on * 0.45;
   });
+  partyLights.forEach(
+    (L, i) => (L.intensity = night && !inRoom ? 55 + 15 * Math.sin(t * 2 + i) : 0),
+  );
   redLight.intensity = t >= 48.08 && t < 53 ? 60 : 0;
   redLight.position.set(0, 6, -33);
 
@@ -1571,6 +1776,16 @@ function renderAt(t) {
   renderer.render(scene, camera);
 }
 
+scene.traverse((o) => {
+  if (!o.isMesh) return;
+  const mats = Array.isArray(o.material) ? o.material : [o.material];
+  const solid = mats.every((m) => m.isMeshLambertMaterial);
+  o.castShadow = solid;
+  o.receiveShadow = solid;
+});
+grass.castShadow = false;
+sand.castShadow = false;
+water.castShadow = false;
 ready = true;
 renderAt(lastT);
 resolveReady();

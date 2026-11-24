@@ -8,20 +8,46 @@ DUR = 63.5
 words = [w for w in json.load(open(f"{ROOT}/words.json"))["words"] if w.get("type", "word") == "word"]
 words = [w for w in words if not w["text"].startswith("[")]
 
+# ---- caption styling (series-wide) ----
+# Names always get their character colour.
+NAME_COLORS = {
+    "lena": "#ff5fa8", "lenas": "#ff5fa8", "lenastadt": "#ff5fa8",
+    "timo": "#5cd6ff", "kevin": "#ffa53d", "mama": "#c58bff", "bürgermeister": "#ffd23d",
+}
+# Sound words (running gags) pop big and wobble.
+SOUND_WORDS = {"ding", "huss", "chrrr", "boom", "k", "bam", "zack"}
+SOUND_COLOR = "#7dffcf"
+# Per-episode punch words: yellow, bigger, a short shake.
+EMPHASIS = {
+    "hundert", "woche", "mond", "spiel", "npcs", "programmiert", "einzige", "spieler",
+    "admin", "offline", "geld", "schwarz", "stimme", "drei",
+}
+EMPH_COLOR = "#ffe14d"
+
 caps = []
 for i, w in enumerate(words):
-    txt = re.sub(r"[.,:;!?]", "", w["text"]).lower()
+    raw = w["text"]
+    txt = re.sub(r"[.,:;!?]", "", raw).lower()
     start = w["start"]
     nxt = words[i + 1]["start"] if i + 1 < len(words) else DUR
     end = min(nxt, w["end"] + 0.55)
     end = max(end, start + 0.12)
-    caps.append((i, txt, round(start, 3), round(end - start, 3)))
+    if txt in SOUND_WORDS:
+        kind, color = "sound", SOUND_COLOR
+    elif txt in NAME_COLORS:
+        kind, color = "name", NAME_COLORS[txt]
+    elif txt in EMPHASIS or raw.endswith(("!", "?")):
+        kind, color = "emph", EMPH_COLOR
+    else:
+        kind, color = "plain", "#ffffff"
+    caps.append((i, txt, round(start, 3), round(end - start, 3), kind, color))
 
 cap_html = "\n".join(
-    f'      <div id="w{i}" class="clip cap" data-start="{s}" data-duration="{d}" data-track-index="1"><span class="word">{t}</span></div>'
-    for i, t, s, d in caps
+    f'      <div id="w{i}" class="clip cap" data-start="{s}" data-duration="{d}" data-track-index="1">'
+    f'<span class="word {k}" style="color:{c}">{t}</span></div>'
+    for i, t, s, d, k, c in caps
 )
-cap_js = json.dumps([[i, s] for i, t, s, d in caps])
+cap_js = json.dumps([[i, s, d, k] for i, t, s, d, k, c in caps])
 
 
 def heart_svg(size, color="#ff2d6f"):
@@ -41,6 +67,12 @@ html = f"""<!doctype html>
     <script src="lib/gsap.min.js"></script>
     <style>
       @font-face {{
+        font-family: "Fredoka";
+        src: url("assets/fonts/fredoka-700.woff2") format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }}
+      @font-face {{
         font-family: "Lilita";
         src: url("assets/fonts/lilita.woff2") format("woff2");
         font-display: block;
@@ -57,10 +89,12 @@ html = f"""<!doctype html>
       #stage {{ position: absolute; inset: 0; width: 1080px; height: 1920px; }}
       .cap {{ position: absolute; left: 0; top: 940px; width: 1010px; height: 200px; display: flex; align-items: center; justify-content: center; z-index: 50; pointer-events: none; }}
       .cap .word {{
-        display: inline-block; color: var(--ink); font-size: 96px; line-height: 1; letter-spacing: 0.01em;
-        -webkit-text-stroke: 14px var(--outline); paint-order: stroke fill;
-        text-shadow: 0 8px 0 rgba(0,0,0,.55);
+        display: inline-block; font-family: "Fredoka", sans-serif; font-weight: 700;
+        font-size: 92px; line-height: 1; letter-spacing: 0.005em;
+        -webkit-text-stroke: 13px #1b0f2e; paint-order: stroke fill;
+        text-shadow: 0 7px 0 #1b0f2e, 0 14px 22px rgba(0,0,0,.35);
       }}
+      .cap .word.sound {{ font-size: 110px; }}
       #phone {{ position: absolute; left: 250px; top: 300px; width: 580px; height: 760px; z-index: 20; }}
       #phoneBody {{ position: absolute; inset: 0; border-radius: 64px; background: #111; border: 14px solid #2a2a2a; box-shadow: 0 30px 80px rgba(0,0,0,.5); overflow: hidden; }}
       #phoneHead {{ height: 120px; background: linear-gradient(90deg, #d81b60, #e0336f); display: flex; align-items: center; gap: 20px; padding: 0 30px; color: #fff; font-size: 46px; }}
@@ -159,8 +193,23 @@ html = f"""<!doctype html>
       const tl = gsap.timeline({{ paused: true }});
       // word pop-in
       const caps = {cap_js};
-      caps.forEach(([i, s]) => {{
-        tl.fromTo("#w" + i + " .word", {{ scale: 0.72, y: 18 }}, {{ scale: 1, y: 0, duration: 0.12, ease: "back.out(3)" }}, s);
+      // each word: pop + tilt in, then a small settle; names/punch words bigger, punch words shake,
+      // sound words bounce in from zero and wobble
+      caps.forEach(([i, s, d, kind]) => {{
+        const el = "#w" + i + " .word";
+        const tilt = ((i * 37) % 11) - 5;
+        if (kind === "sound") {{
+          tl.fromTo(el, {{ scale: 0, rotation: -18 }}, {{ scale: 1.15, rotation: 8, duration: 0.22, ease: "back.out(4)" }}, s);
+          tl.to(el, {{ rotation: -6, duration: 0.08, yoyo: true, repeat: 3, ease: "sine.inOut" }}, s + 0.22);
+          return;
+        }}
+        const big = kind === "emph" ? 1.22 : kind === "name" ? 1.12 : 1;
+        tl.fromTo(el, {{ scale: 0.35, rotation: tilt * 2, y: 46, opacity: 0 }},
+          {{ scale: big * 1.08, rotation: tilt * 0.4, y: 0, opacity: 1, duration: 0.15, ease: "back.out(3.2)" }}, s);
+        tl.to(el, {{ scale: big, duration: Math.min(0.3, Math.max(0.08, d - 0.16)), ease: "power2.out" }}, s + 0.15);
+        if (kind === "emph") {{
+          tl.fromTo(el, {{ x: -7 }}, {{ x: 7, duration: 0.035, yoyo: true, repeat: 5, ease: "none" }}, s + 0.15);
+        }}
       }});
       // phone
       tl.fromTo("#phoneIn", {{ y: 900, rotation: -6 }}, {{ y: 0, rotation: 0, duration: 0.35, ease: "back.out(1.4)" }}, 16.85);

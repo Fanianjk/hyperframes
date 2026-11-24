@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="lib/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Lilita";
+        src: url("assets/fonts/lilita.woff2") format("woff2");
+        font-display: block;
+      }
+      :root {
+        --ink: #ffffff;
+        --outline: #121212;
+        --pink: #ff3d8a;
+        --font-display: "Lilita", sans-serif;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: var(--font-display); background: #000; }
+      #stage { position: absolute; inset: 0; width: 1080px; height: 1920px; }
+      .cap { position: absolute; left: 0; top: 940px; width: 1010px; height: 200px; display: flex; align-items: center; justify-content: center; z-index: 50; pointer-events: none; }
+      .cap .word {
+        display: inline-block; color: var(--ink); font-size: 96px; line-height: 1; letter-spacing: 0.01em;
+        -webkit-text-stroke: 14px var(--outline); paint-order: stroke fill;
+        text-shadow: 0 8px 0 rgba(0,0,0,.55);
+      }
+      #phone { position: absolute; left: 250px; top: 300px; width: 580px; height: 760px; z-index: 20; }
+      #phoneBody { position: absolute; inset: 0; border-radius: 64px; background: #111; border: 14px solid #2a2a2a; box-shadow: 0 30px 80px rgba(0,0,0,.5); overflow: hidden; }
+      #phoneHead { height: 120px; background: linear-gradient(90deg, #d81b60, #e0336f); display: flex; align-items: center; gap: 20px; padding: 0 30px; color: #fff; font-size: 46px; }
+      .avatar { width: 70px; height: 70px; border-radius: 50%; background: #ffd94a; border: 5px solid #fff; display:flex; align-items:center; justify-content:center; }
+      #badge { margin-left: auto; background: #e0102a; color: #fff; border-radius: 30px; padding: 6px 16px; font-size: 34px; }
+      #chat { position: absolute; top: 120px; left: 0; right: 0; bottom: 0; background: #fdf1f6; padding: 26px; }
+      .msg { position: relative; max-width: 420px; margin-bottom: 18px; padding: 16px 24px; border-radius: 30px; font-size: 38px; color: #fff; background: var(--pink); width: fit-content; display: flex; align-items: center; gap: 8px; }
+      .msg.me { margin-left: auto; background: #2f80ed; font-size: 54px; padding: 12px 34px; }
+      #meter { position: absolute; left: 170px; top: 330px; width: 700px; height: 170px; z-index: 20; }
+      #meterBox { position: absolute; inset: 0; background: rgba(20,20,30,.82); border-radius: 40px; border: 6px solid var(--pink); padding: 20px 34px; color: #fff; }
+      #meterLabel { font-size: 40px; display:flex; align-items:center; gap: 12px; }
+      #meterTrack { margin-top: 14px; height: 46px; background: #3a3a4a; border-radius: 23px; overflow: hidden; }
+      #meterFill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff3d8a, #ffd23d); transform-origin: left center; }
+      #meterNum { position: absolute; right: 34px; top: 16px; font-size: 54px; color: #ffd23d; }
+      #kick { position: absolute; left: 110px; top: 560px; width: 860px; height: 560px; z-index: 30; }
+      #kickBox { position: absolute; inset: 0; background: #23252b; border-radius: 26px; border: 4px solid #3b3e46; color: #fff; padding: 40px 50px; box-shadow: 0 30px 90px rgba(0,0,0,.7); }
+      #kickTitle { font-size: 60px; text-align: center; padding-bottom: 22px; border-bottom: 3px solid #3b3e46; }
+      #kickText { font-family: sans-serif; font-weight: 700; font-size: 38px; line-height: 1.35; text-align: center; margin-top: 30px; color: #d9dbe0; }
+      #kickBtn { margin: 34px auto 0; width: 320px; height: 92px; border-radius: 16px; background: #ffffff; color: #23252b; font-size: 46px; display: flex; align-items: center; justify-content: center; }
+      #dim { position: absolute; inset: 0; background: rgba(0,0,0,.55); z-index: 25; }
+      #black { position: absolute; inset: 0; z-index: 40; }
+      #flash { position: absolute; inset: 0; background: #fff; z-index: 41; }
+      .gbar { position: absolute; left: 0; width: 1080px; z-index: 35; mix-blend-mode: screen; }
+      #wm { position: absolute; left: 0; top: 0; z-index: 45; pointer-events: none; }
+      #wmIn { display: flex; align-items: center; gap: 8px; opacity: 0.45; }
+      .brick { width: 24px; height: 24px; border-radius: 4px; background: #ff6a2b; border: 3px solid #fff;
+        box-shadow: inset 0 -5px 0 rgba(0,0,0,.25), 0 2px 0 rgba(0,0,0,.45); position: relative; }
+      .brick::before, .brick::after { content: ""; position: absolute; top: -7px; width: 7px; height: 5px; background: #ff6a2b; border: 2px solid #fff; border-bottom: 0; border-radius: 3px 3px 0 0; }
+      .brick::before { left: 1px; } .brick::after { right: 1px; }
+      #wmText { font-size: 28px; color: #fff; -webkit-text-stroke: 5px rgba(0,0,0,.6); paint-order: stroke fill; letter-spacing: 0.01em; }
+      #vignette { position: absolute; inset: 0; z-index: 15; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,.45) 100%); pointer-events:none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="63.5" data-width="1080" data-height="1920" data-layout-allow-overflow data-layout-allow-overlap>
+      <canvas id="stage" width="720" height="1280"></canvas>
+      <div id="vignette"></div>
+
+      <div id="phone" class="clip" data-start="16.85" data-duration="5.6" data-track-index="2" data-track-kind="graphics">
+        <div id="phoneIn">
+          <div id="phoneBody" style="width:580px;height:760px;position:relative;">
+            <div id="phoneHead"><div class="avatar"><svg width="40" height="40" viewBox="0 0 32 32"><path fill="#ff2d6f" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg></div>Lena<div id="badge">99+</div></div>
+            <div id="chat">
+              <div id="m1" class="msg">hiii timo <svg width="30" height="30" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg></div>
+              <div id="m2" class="msg">timo??</div>
+              <div id="m3" class="msg">ich hab dir ein gedicht geschrieben</div>
+              <div id="m4" class="msg"><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg></div>
+              <div id="m5" class="msg"><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg></div>
+              <div id="m6" class="msg"><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#fff" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg></div>
+              <div id="m7" class="msg me">k</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="meter" class="clip" data-start="22.45" data-duration="3.15" data-track-index="3" data-track-kind="graphics">
+        <div id="meterIn" style="position:absolute;inset:0;">
+          <div id="meterBox">
+            <div id="meterLabel"><svg width="34" height="34" viewBox="0 0 32 32"><path fill="#ff2d6f" d="M16 29 C6 21 1 15 1 9.5 C1 5 4.5 2 8.5 2 C11.6 2 14.4 3.8 16 6.4 C17.6 3.8 20.4 2 23.5 2 C27.5 2 31 5 31 9.5 C31 15 26 21 16 29Z"/></svg> Lenas Liebe</div>
+            <div id="meterTrack"><div id="meterFill"></div></div>
+          </div>
+          <div id="meterNum">100%</div>
+        </div>
+      </div>
+
+      <div id="dim" class="clip" data-start="48.85" data-duration="2.87" data-track-index="4"></div>
+      <div id="kick" class="clip" data-start="48.85" data-duration="2.87" data-track-index="5" data-track-kind="graphics">
+        <div id="kickIn" style="position:absolute;inset:0;">
+          <div id="kickBox">
+            <div id="kickTitle">Verbindung getrennt</div>
+            <div id="kickText">Du wurdest vom Server entfernt.<br/>Grund: 3 Jahre nicht offline.<br/>Server kosten Geld.<br/><span style="color:#8a8f9c;font-size:30px">(Fehlercode: LENA-404)</span></div>
+            <div id="kickBtn">Verlassen</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="black" class="clip" data-start="51.72" data-duration="4.1" data-track-index="6"><div id="blackIn" style="position:absolute;inset:0;background:#000;opacity:0"></div></div>
+      <div id="g1" class="gbar" style="top:420px;height:70px;background:rgba(255,0,80,.55)"></div>
+      <div id="g2" class="gbar" style="top:930px;height:40px;background:rgba(0,220,255,.55)"></div>
+      <div id="g3" class="gbar" style="top:1420px;height:110px;background:rgba(120,255,120,.35)"></div>
+
+      <div id="wm" class="clip" data-start="0" data-duration="63.5" data-track-index="7" data-track-kind="graphics">
+        <div id="wmIn"><div class="brick"></div><div id="wmText" data-var-text="handle">@blockhausen.tv</div></div>
+      </div>
+
+      <div id="captions" data-track-kind="captions">
+      <div id="w0" class="clip cap" data-start="0.137" data-duration="0.12" data-track-index="1"><span class="word">in</span></div>
+      <div id="w1" class="clip cap" data-start="0.213" data-duration="0.267" data-track-index="1"><span class="word">dieser</span></div>
+      <div id="w2" class="clip cap" data-start="0.48" data-duration="0.4" data-track-index="1"><span class="word">stadt</span></div>
+      <div id="w3" class="clip cap" data-start="0.88" data-duration="0.48" data-track-index="1"><span class="word">lieben</span></div>
+      <div id="w4" class="clip cap" data-start="1.36" data-duration="0.24" data-track-index="1"><span class="word">alle</span></div>
+      <div id="w5" class="clip cap" data-start="1.6" data-duration="0.95" data-track-index="1"><span class="word">lena</span></div>
+      <div id="w6" class="clip cap" data-start="2.56" data-duration="0.24" data-track-index="1"><span class="word">nur</span></div>
+      <div id="w7" class="clip cap" data-start="2.8" data-duration="0.16" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w8" class="clip cap" data-start="2.96" data-duration="0.87" data-track-index="1"><span class="word">nicht</span></div>
+      <div id="w9" class="clip cap" data-start="3.84" data-duration="0.16" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w10" class="clip cap" data-start="4.0" data-duration="0.16" data-track-index="1"><span class="word">bin</span></div>
+      <div id="w11" class="clip cap" data-start="4.16" data-duration="0.96" data-track-index="1"><span class="word">timo</span></div>
+      <div id="w12" class="clip cap" data-start="5.12" data-duration="0.16" data-track-index="1"><span class="word">mein</span></div>
+      <div id="w13" class="clip cap" data-start="5.28" data-duration="0.32" data-track-index="1"><span class="word">nachbar</span></div>
+      <div id="w14" class="clip cap" data-start="5.6" data-duration="0.12" data-track-index="1"><span class="word">hat</span></div>
+      <div id="w15" class="clip cap" data-start="5.72" data-duration="0.147" data-track-index="1"><span class="word">ihr</span></div>
+      <div id="w16" class="clip cap" data-start="5.867" data-duration="0.12" data-track-index="1"><span class="word">ein</span></div>
+      <div id="w17" class="clip cap" data-start="5.96" data-duration="0.28" data-track-index="1"><span class="word">haus</span></div>
+      <div id="w18" class="clip cap" data-start="6.24" data-duration="0.56" data-track-index="1"><span class="word">gebaut</span></div>
+      <div id="w19" class="clip cap" data-start="6.8" data-duration="0.32" data-track-index="1"><span class="word">in</span></div>
+      <div id="w20" class="clip cap" data-start="7.12" data-duration="0.4" data-track-index="1"><span class="word">einer</span></div>
+      <div id="w21" class="clip cap" data-start="7.52" data-duration="0.88" data-track-index="1"><span class="word">woche</span></div>
+      <div id="w22" class="clip cap" data-start="8.4" data-duration="0.4" data-track-index="1"><span class="word">kevin</span></div>
+      <div id="w23" class="clip cap" data-start="8.8" data-duration="0.16" data-track-index="1"><span class="word">hat</span></div>
+      <div id="w24" class="clip cap" data-start="8.96" data-duration="0.32" data-track-index="1"><span class="word">ihren</span></div>
+      <div id="w25" class="clip cap" data-start="9.28" data-duration="0.24" data-track-index="1"><span class="word">namen</span></div>
+      <div id="w26" class="clip cap" data-start="9.52" data-duration="0.12" data-track-index="1"><span class="word">in</span></div>
+      <div id="w27" class="clip cap" data-start="9.64" data-duration="0.2" data-track-index="1"><span class="word">den</span></div>
+      <div id="w28" class="clip cap" data-start="9.84" data-duration="0.32" data-track-index="1"><span class="word">mond</span></div>
+      <div id="w29" class="clip cap" data-start="10.16" data-duration="0.72" data-track-index="1"><span class="word">geritzt</span></div>
+      <div id="w30" class="clip cap" data-start="10.88" data-duration="0.16" data-track-index="1"><span class="word">der</span></div>
+      <div id="w31" class="clip cap" data-start="11.04" data-duration="0.64" data-track-index="1"><span class="word">bürgermeister</span></div>
+      <div id="w32" class="clip cap" data-start="11.68" data-duration="0.12" data-track-index="1"><span class="word">hat</span></div>
+      <div id="w33" class="clip cap" data-start="11.8" data-duration="0.12" data-track-index="1"><span class="word">die</span></div>
+      <div id="w34" class="clip cap" data-start="11.92" data-duration="0.36" data-track-index="1"><span class="word">stadt</span></div>
+      <div id="w35" class="clip cap" data-start="12.28" data-duration="0.76" data-track-index="1"><span class="word">umbenannt</span></div>
+      <div id="w36" class="clip cap" data-start="13.04" data-duration="1.12" data-track-index="1"><span class="word">lenastadt</span></div>
+      <div id="w37" class="clip cap" data-start="14.16" data-duration="0.24" data-track-index="1"><span class="word">und</span></div>
+      <div id="w38" class="clip cap" data-start="14.4" data-duration="0.96" data-track-index="1"><span class="word">lena</span></div>
+      <div id="w39" class="clip cap" data-start="15.36" data-duration="0.4" data-track-index="1"><span class="word">lena</span></div>
+      <div id="w40" class="clip cap" data-start="15.76" data-duration="0.24" data-track-index="1"><span class="word">will</span></div>
+      <div id="w41" class="clip cap" data-start="16.0" data-duration="0.24" data-track-index="1"><span class="word">nur</span></div>
+      <div id="w42" class="clip cap" data-start="16.24" data-duration="0.64" data-track-index="1"><span class="word">mich</span></div>
+      <div id="w43" class="clip cap" data-start="16.88" data-duration="0.16" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w44" class="clip cap" data-start="17.04" data-duration="0.32" data-track-index="1"><span class="word">schreibt</span></div>
+      <div id="w45" class="clip cap" data-start="17.36" data-duration="0.12" data-track-index="1"><span class="word">mir</span></div>
+      <div id="w46" class="clip cap" data-start="17.48" data-duration="0.44" data-track-index="1"><span class="word">hundert</span></div>
+      <div id="w47" class="clip cap" data-start="17.92" data-duration="0.44" data-track-index="1"><span class="word">nachrichten</span></div>
+      <div id="w48" class="clip cap" data-start="18.36" data-duration="0.12" data-track-index="1"><span class="word">am</span></div>
+      <div id="w49" class="clip cap" data-start="18.48" data-duration="0.52" data-track-index="1"><span class="word">tag</span></div>
+      <div id="w50" class="clip cap" data-start="19.0" data-duration="0.44" data-track-index="1"><span class="word">ding</span></div>
+      <div id="w51" class="clip cap" data-start="19.44" data-duration="0.44" data-track-index="1"><span class="word">ding</span></div>
+      <div id="w52" class="clip cap" data-start="19.88" data-duration="0.76" data-track-index="1"><span class="word">ding</span></div>
+      <div id="w53" class="clip cap" data-start="20.64" data-duration="0.16" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w54" class="clip cap" data-start="20.8" data-duration="0.88" data-track-index="1"><span class="word">antworte</span></div>
+      <div id="w55" class="clip cap" data-start="21.68" data-duration="0.87" data-track-index="1"><span class="word">k</span></div>
+      <div id="w56" class="clip cap" data-start="22.56" data-duration="0.24" data-track-index="1"><span class="word">je</span></div>
+      <div id="w57" class="clip cap" data-start="22.8" data-duration="0.36" data-track-index="1"><span class="word">weniger</span></div>
+      <div id="w58" class="clip cap" data-start="23.16" data-duration="0.12" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w59" class="clip cap" data-start="23.28" data-duration="0.68" data-track-index="1"><span class="word">antworte</span></div>
+      <div id="w60" class="clip cap" data-start="23.96" data-duration="0.28" data-track-index="1"><span class="word">desto</span></div>
+      <div id="w61" class="clip cap" data-start="24.24" data-duration="0.24" data-track-index="1"><span class="word">mehr</span></div>
+      <div id="w62" class="clip cap" data-start="24.48" data-duration="0.24" data-track-index="1"><span class="word">will</span></div>
+      <div id="w63" class="clip cap" data-start="24.72" data-duration="0.12" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w64" class="clip cap" data-start="24.84" data-duration="0.83" data-track-index="1"><span class="word">mich</span></div>
+      <div id="w65" class="clip cap" data-start="25.68" data-duration="0.44" data-track-index="1"><span class="word">freitag</span></div>
+      <div id="w66" class="clip cap" data-start="26.12" data-duration="0.16" data-track-index="1"><span class="word">beim</span></div>
+      <div id="w67" class="clip cap" data-start="26.28" data-duration="0.6" data-track-index="1"><span class="word">stadtfest</span></div>
+      <div id="w68" class="clip cap" data-start="26.88" data-duration="0.2" data-track-index="1"><span class="word">steht</span></div>
+      <div id="w69" class="clip cap" data-start="27.08" data-duration="0.28" data-track-index="1"><span class="word">lena</span></div>
+      <div id="w70" class="clip cap" data-start="27.36" data-duration="0.12" data-track-index="1"><span class="word">auf</span></div>
+      <div id="w71" class="clip cap" data-start="27.48" data-duration="0.12" data-track-index="1"><span class="word">der</span></div>
+      <div id="w72" class="clip cap" data-start="27.6" data-duration="0.72" data-track-index="1"><span class="word">bühne</span></div>
+      <div id="w73" class="clip cap" data-start="28.32" data-duration="0.36" data-track-index="1"><span class="word">alle</span></div>
+      <div id="w74" class="clip cap" data-start="28.68" data-duration="0.2" data-track-index="1"><span class="word">halten</span></div>
+      <div id="w75" class="clip cap" data-start="28.88" data-duration="0.12" data-track-index="1"><span class="word">die</span></div>
+      <div id="w76" class="clip cap" data-start="29.0" data-duration="0.28" data-track-index="1"><span class="word">luft</span></div>
+      <div id="w77" class="clip cap" data-start="29.28" data-duration="0.48" data-track-index="1"><span class="word">an</span></div>
+      <div id="w78" class="clip cap" data-start="29.76" data-duration="0.4" data-track-index="1"><span class="word">kevin</span></div>
+      <div id="w79" class="clip cap" data-start="30.16" data-duration="0.28" data-track-index="1"><span class="word">weint</span></div>
+      <div id="w80" class="clip cap" data-start="30.44" data-duration="0.76" data-track-index="1"><span class="word">schon</span></div>
+      <div id="w81" class="clip cap" data-start="31.2" data-duration="0.24" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w82" class="clip cap" data-start="31.44" data-duration="0.24" data-track-index="1"><span class="word">zeigt</span></div>
+      <div id="w83" class="clip cap" data-start="31.68" data-duration="0.16" data-track-index="1"><span class="word">auf</span></div>
+      <div id="w84" class="clip cap" data-start="31.84" data-duration="0.48" data-track-index="1"><span class="word">mich</span></div>
+      <div id="w85" class="clip cap" data-start="32.32" data-duration="0.16" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w86" class="clip cap" data-start="32.48" data-duration="0.8" data-track-index="1"><span class="word">sagt</span></div>
+      <div id="w87" class="clip cap" data-start="33.28" data-duration="0.64" data-track-index="1"><span class="word">timo</span></div>
+      <div id="w88" class="clip cap" data-start="33.92" data-duration="0.16" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w89" class="clip cap" data-start="34.08" data-duration="0.16" data-track-index="1"><span class="word">muss</span></div>
+      <div id="w90" class="clip cap" data-start="34.24" data-duration="0.16" data-track-index="1"><span class="word">dir</span></div>
+      <div id="w91" class="clip cap" data-start="34.4" data-duration="0.12" data-track-index="1"><span class="word">was</span></div>
+      <div id="w92" class="clip cap" data-start="34.52" data-duration="0.91" data-track-index="1"><span class="word">sagen</span></div>
+      <div id="w93" class="clip cap" data-start="35.552" data-duration="0.128" data-track-index="1"><span class="word">diese</span></div>
+      <div id="w94" class="clip cap" data-start="35.68" data-duration="0.32" data-track-index="1"><span class="word">stadt</span></div>
+      <div id="w95" class="clip cap" data-start="36.0" data-duration="0.16" data-track-index="1"><span class="word">ist</span></div>
+      <div id="w96" class="clip cap" data-start="36.16" data-duration="0.16" data-track-index="1"><span class="word">ein</span></div>
+      <div id="w97" class="clip cap" data-start="36.32" data-duration="0.92" data-track-index="1"><span class="word">spiel</span></div>
+      <div id="w98" class="clip cap" data-start="37.24" data-duration="0.2" data-track-index="1"><span class="word">alle</span></div>
+      <div id="w99" class="clip cap" data-start="37.44" data-duration="0.213" data-track-index="1"><span class="word">hier</span></div>
+      <div id="w100" class="clip cap" data-start="37.653" data-duration="0.187" data-track-index="1"><span class="word">sind</span></div>
+      <div id="w101" class="clip cap" data-start="37.84" data-duration="0.96" data-track-index="1"><span class="word">npcs</span></div>
+      <div id="w102" class="clip cap" data-start="38.8" data-duration="0.24" data-track-index="1"><span class="word">die</span></div>
+      <div id="w103" class="clip cap" data-start="39.04" data-duration="0.24" data-track-index="1"><span class="word">lieben</span></div>
+      <div id="w104" class="clip cap" data-start="39.28" data-duration="0.213" data-track-index="1"><span class="word">mich</span></div>
+      <div id="w105" class="clip cap" data-start="39.493" data-duration="0.147" data-track-index="1"><span class="word">weil</span></div>
+      <div id="w106" class="clip cap" data-start="39.64" data-duration="0.12" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w107" class="clip cap" data-start="39.76" data-duration="0.24" data-track-index="1"><span class="word">so</span></div>
+      <div id="w108" class="clip cap" data-start="40.0" data-duration="0.44" data-track-index="1"><span class="word">programmiert</span></div>
+      <div id="w109" class="clip cap" data-start="40.44" data-duration="0.68" data-track-index="1"><span class="word">sind</span></div>
+      <div id="w110" class="clip cap" data-start="41.12" data-duration="0.32" data-track-index="1"><span class="word">du</span></div>
+      <div id="w111" class="clip cap" data-start="41.44" data-duration="0.24" data-track-index="1"><span class="word">bist</span></div>
+      <div id="w112" class="clip cap" data-start="41.68" data-duration="0.16" data-track-index="1"><span class="word">der</span></div>
+      <div id="w113" class="clip cap" data-start="41.84" data-duration="0.56" data-track-index="1"><span class="word">einzige</span></div>
+      <div id="w114" class="clip cap" data-start="42.4" data-duration="0.32" data-track-index="1"><span class="word">echte</span></div>
+      <div id="w115" class="clip cap" data-start="42.72" data-duration="0.96" data-track-index="1"><span class="word">spieler</span></div>
+      <div id="w116" class="clip cap" data-start="43.68" data-duration="0.24" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w117" class="clip cap" data-start="43.92" data-duration="0.64" data-track-index="1"><span class="word">frag</span></div>
+      <div id="w118" class="clip cap" data-start="44.56" data-duration="0.24" data-track-index="1"><span class="word">und</span></div>
+      <div id="w119" class="clip cap" data-start="44.8" data-duration="0.28" data-track-index="1"><span class="word">warum</span></div>
+      <div id="w120" class="clip cap" data-start="45.08" data-duration="0.227" data-track-index="1"><span class="word">willst</span></div>
+      <div id="w121" class="clip cap" data-start="45.307" data-duration="0.133" data-track-index="1"><span class="word">du</span></div>
+      <div id="w122" class="clip cap" data-start="45.44" data-duration="0.64" data-track-index="1"><span class="word">mich</span></div>
+      <div id="w123" class="clip cap" data-start="46.08" data-duration="0.16" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w124" class="clip cap" data-start="46.24" data-duration="0.64" data-track-index="1"><span class="word">sagt</span></div>
+      <div id="w125" class="clip cap" data-start="46.88" data-duration="0.16" data-track-index="1"><span class="word">will</span></div>
+      <div id="w126" class="clip cap" data-start="47.04" data-duration="0.16" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w127" class="clip cap" data-start="47.2" data-duration="0.52" data-track-index="1"><span class="word">nicht</span></div>
+      <div id="w128" class="clip cap" data-start="47.72" data-duration="0.12" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w129" class="clip cap" data-start="47.84" data-duration="0.12" data-track-index="1"><span class="word">bin</span></div>
+      <div id="w130" class="clip cap" data-start="47.96" data-duration="0.12" data-track-index="1"><span class="word">der</span></div>
+      <div id="w131" class="clip cap" data-start="48.08" data-duration="0.76" data-track-index="1"><span class="word">admin</span></div>
+      <div id="w132" class="clip cap" data-start="48.84" data-duration="0.12" data-track-index="1"><span class="word">du</span></div>
+      <div id="w133" class="clip cap" data-start="48.96" data-duration="0.28" data-track-index="1"><span class="word">warst</span></div>
+      <div id="w134" class="clip cap" data-start="49.24" data-duration="0.28" data-track-index="1"><span class="word">drei</span></div>
+      <div id="w135" class="clip cap" data-start="49.52" data-duration="0.293" data-track-index="1"><span class="word">jahre</span></div>
+      <div id="w136" class="clip cap" data-start="49.813" data-duration="0.187" data-track-index="1"><span class="word">nicht</span></div>
+      <div id="w137" class="clip cap" data-start="50.0" data-duration="0.6" data-track-index="1"><span class="word">offline</span></div>
+      <div id="w138" class="clip cap" data-start="50.6" data-duration="0.12" data-track-index="1"><span class="word">die</span></div>
+      <div id="w139" class="clip cap" data-start="50.72" data-duration="0.32" data-track-index="1"><span class="word">server</span></div>
+      <div id="w140" class="clip cap" data-start="51.04" data-duration="0.32" data-track-index="1"><span class="word">kosten</span></div>
+      <div id="w141" class="clip cap" data-start="51.36" data-duration="0.897" data-track-index="1"><span class="word">geld</span></div>
+      <div id="w142" class="clip cap" data-start="53.48" data-duration="0.28" data-track-index="1"><span class="word">dann</span></div>
+      <div id="w143" class="clip cap" data-start="53.76" data-duration="0.36" data-track-index="1"><span class="word">wurde</span></div>
+      <div id="w144" class="clip cap" data-start="54.12" data-duration="0.2" data-track-index="1"><span class="word">alles</span></div>
+      <div id="w145" class="clip cap" data-start="54.32" data-duration="0.96" data-track-index="1"><span class="word">schwarz</span></div>
+      <div id="w146" class="clip cap" data-start="55.28" data-duration="0.12" data-track-index="1"><span class="word">ich</span></div>
+      <div id="w147" class="clip cap" data-start="55.4" data-duration="0.12" data-track-index="1"><span class="word">bin</span></div>
+      <div id="w148" class="clip cap" data-start="55.52" data-duration="0.12" data-track-index="1"><span class="word">in</span></div>
+      <div id="w149" class="clip cap" data-start="55.64" data-duration="0.28" data-track-index="1"><span class="word">meinem</span></div>
+      <div id="w150" class="clip cap" data-start="55.92" data-duration="0.24" data-track-index="1"><span class="word">zimmer</span></div>
+      <div id="w151" class="clip cap" data-start="56.16" data-duration="0.96" data-track-index="1"><span class="word">aufgewacht</span></div>
+      <div id="w152" class="clip cap" data-start="57.12" data-duration="0.32" data-track-index="1"><span class="word">mama</span></div>
+      <div id="w153" class="clip cap" data-start="57.44" data-duration="0.2" data-track-index="1"><span class="word">steht</span></div>
+      <div id="w154" class="clip cap" data-start="57.64" data-duration="0.12" data-track-index="1"><span class="word">in</span></div>
+      <div id="w155" class="clip cap" data-start="57.76" data-duration="0.2" data-track-index="1"><span class="word">der</span></div>
+      <div id="w156" class="clip cap" data-start="57.96" data-duration="0.52" data-track-index="1"><span class="word">tür</span></div>
+      <div id="w157" class="clip cap" data-start="58.48" data-duration="0.16" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w158" class="clip cap" data-start="58.64" data-duration="0.56" data-track-index="1"><span class="word">sagt</span></div>
+      <div id="w159" class="clip cap" data-start="59.2" data-duration="0.64" data-track-index="1"><span class="word">timo</span></div>
+      <div id="w160" class="clip cap" data-start="59.84" data-duration="1.253" data-track-index="1"><span class="word">abendessen</span></div>
+      <div id="w161" class="clip cap" data-start="61.093" data-duration="0.12" data-track-index="1"><span class="word">sie</span></div>
+      <div id="w162" class="clip cap" data-start="61.2" data-duration="0.16" data-track-index="1"><span class="word">hat</span></div>
+      <div id="w163" class="clip cap" data-start="61.36" data-duration="0.4" data-track-index="1"><span class="word">lenas</span></div>
+      <div id="w164" class="clip cap" data-start="61.76" data-duration="1.27" data-track-index="1"><span class="word">stimme</span></div>
+      </div>
+
+      <audio id="voice" src="assets/voice.mp3" data-start="0" data-duration="62.4" data-track-index="10" data-volume="1"></audio>
+      <audio id="music" src="assets/music.wav" data-start="0" data-duration="63.5" data-track-index="11" data-volume="0.32"></audio>
+      <audio id="sfx" src="assets/sfx.wav" data-start="0" data-duration="63.5" data-track-index="12" data-volume="0.55"></audio>
+    </div>
+    <script type="module" src="world.js"></script>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // word pop-in
+      const caps = [[0, 0.137], [1, 0.213], [2, 0.48], [3, 0.88], [4, 1.36], [5, 1.6], [6, 2.56], [7, 2.8], [8, 2.96], [9, 3.84], [10, 4.0], [11, 4.16], [12, 5.12], [13, 5.28], [14, 5.6], [15, 5.72], [16, 5.867], [17, 5.96], [18, 6.24], [19, 6.8], [20, 7.12], [21, 7.52], [22, 8.4], [23, 8.8], [24, 8.96], [25, 9.28], [26, 9.52], [27, 9.64], [28, 9.84], [29, 10.16], [30, 10.88], [31, 11.04], [32, 11.68], [33, 11.8], [34, 11.92], [35, 12.28], [36, 13.04], [37, 14.16], [38, 14.4], [39, 15.36], [40, 15.76], [41, 16.0], [42, 16.24], [43, 16.88], [44, 17.04], [45, 17.36], [46, 17.48], [47, 17.92], [48, 18.36], [49, 18.48], [50, 19.0], [51, 19.44], [52, 19.88], [53, 20.64], [54, 20.8], [55, 21.68], [56, 22.56], [57, 22.8], [58, 23.16], [59, 23.28], [60, 23.96], [61, 24.24], [62, 24.48], [63, 24.72], [64, 24.84], [65, 25.68], [66, 26.12], [67, 26.28], [68, 26.88], [69, 27.08], [70, 27.36], [71, 27.48], [72, 27.6], [73, 28.32], [74, 28.68], [75, 28.88], [76, 29.0], [77, 29.28], [78, 29.76], [79, 30.16], [80, 30.44], [81, 31.2], [82, 31.44], [83, 31.68], [84, 31.84], [85, 32.32], [86, 32.48], [87, 33.28], [88, 33.92], [89, 34.08], [90, 34.24], [91, 34.4], [92, 34.52], [93, 35.552], [94, 35.68], [95, 36.0], [96, 36.16], [97, 36.32], [98, 37.24], [99, 37.44], [100, 37.653], [101, 37.84], [102, 38.8], [103, 39.04], [104, 39.28], [105, 39.493], [106, 39.64], [107, 39.76], [108, 40.0], [109, 40.44], [110, 41.12], [111, 41.44], [112, 41.68], [113, 41.84], [114, 42.4], [115, 42.72], [116, 43.68], [117, 43.92], [118, 44.56], [119, 44.8], [120, 45.08], [121, 45.307], [122, 45.44], [123, 46.08], [124, 46.24], [125, 46.88], [126, 47.04], [127, 47.2], [128, 47.72], [129, 47.84], [130, 47.96], [131, 48.08], [132, 48.84], [133, 48.96], [134, 49.24], [135, 49.52], [136, 49.813], [137, 50.0], [138, 50.6], [139, 50.72], [140, 51.04], [141, 51.36], [142, 53.48], [143, 53.76], [144, 54.12], [145, 54.32], [146, 55.28], [147, 55.4], [148, 55.52], [149, 55.64], [150, 55.92], [151, 56.16], [152, 57.12], [153, 57.44], [154, 57.64], [155, 57.76], [156, 57.96], [157, 58.48], [158, 58.64], [159, 59.2], [160, 59.84], [161, 61.093], [162, 61.2], [163, 61.36], [164, 61.76]];
+      caps.forEach(([i, s]) => {
+        tl.fromTo("#w" + i + " .word", { scale: 0.72, y: 18 }, { scale: 1, y: 0, duration: 0.12, ease: "back.out(3)" }, s);
+      });
+      // phone
+      tl.fromTo("#phoneIn", { y: 900, rotation: -6 }, { y: 0, rotation: 0, duration: 0.35, ease: "back.out(1.4)" }, 16.85);
+      const msgT = [17.3, 17.9, 18.45, 19.0, 19.44, 19.88, 21.68];
+      msgT.forEach((s, k) => {
+        tl.fromTo("#m" + (k + 1), { opacity: 0, scale: 0.4, y: 30 }, { opacity: 1, scale: 1, y: 0, duration: 0.18, ease: "back.out(2.5)" }, s);
+      });
+      tl.fromTo("#badge", { scale: 1 }, { scale: 1.35, duration: 0.1, yoyo: true, repeat: 5 }, 19.0);
+      tl.to("#phoneIn", { y: 900, duration: 0.25, ease: "power2.in" }, 22.15);
+      // love meter: the less he answers, the more she loves him
+      tl.fromTo("#meterIn", { y: -300 }, { y: 0, duration: 0.3, ease: "back.out(1.6)" }, 22.45);
+      tl.fromTo("#meterFill", { scaleX: 0.25 }, { scaleX: 1, duration: 2.4, ease: "power2.in" }, 22.6);
+      const num = { v: 100 };
+      tl.fromTo(num, { v: 100 }, { v: 9999, duration: 2.4, ease: "power3.in", onUpdate: () => {
+        document.getElementById("meterNum").textContent = Math.round(num.v) + "%";
+      } }, 22.6);
+      tl.fromTo("#meterIn", { x: 0 }, { x: 10, duration: 0.05, yoyo: true, repeat: 9 }, 24.6);
+      tl.to("#meterIn", { y: -320, duration: 0.25, ease: "power2.in" }, 25.3);
+      // kick dialog
+      tl.fromTo("#dim", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 48.85);
+      tl.fromTo("#kickIn", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.25, ease: "back.out(2)" }, 48.85);
+      // black, then eyes open into the bedroom
+      tl.set("#blackIn", { opacity: 1 }, 51.72);
+      tl.fromTo("#blackIn", { opacity: 1 }, { opacity: 0, duration: 0.6, ease: "power1.inOut", immediateRender: false }, 55.0);
+      // glitch bars (deterministic)
+      function rnd(n) { let a = n * 9973 + 11; a = Math.imul(a ^ (a >>> 15), 1 | a); a ^= a + Math.imul(a ^ (a >>> 7), 61 | a); return ((a ^ (a >>> 14)) >>> 0) / 4294967296; }
+      tl.set(".gbar", { opacity: 0 }, 0);
+      [[35.32, 35.95], [37.84, 38.25], [48.08, 48.6], [62.45, 63.1]].forEach(([a, b], bi) => {
+        for (let f = 0, t = a; t < b; f++, t += 1 / 15) {
+          ["#g1", "#g2", "#g3"].forEach((g, gi) => {
+            const r = rnd(bi * 1000 + f * 10 + gi);
+            tl.set(g, { opacity: r > 0.4 ? 1 : 0, y: (rnd(bi * 777 + f * 13 + gi) - 0.5) * 500, scaleY: 0.4 + r * 1.6 }, t);
+          });
+        }
+        tl.set(".gbar", { opacity: 0 }, b);
+      });
+      // watermark: small, see-through, fixed in the top-left corner
+      tl.set("#wmIn", { x: 40, y: 250 }, 0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

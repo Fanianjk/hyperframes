@@ -1,0 +1,5 @@
+assets/*.wav
+renders/
+snaps*/
+.hyperframes/
+lib/
